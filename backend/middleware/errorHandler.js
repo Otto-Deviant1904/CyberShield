@@ -5,8 +5,8 @@ function notFoundHandler(req, res) {
 }
 
 function errorHandler(err, req, res, _next) {
-
-  const status = err.status || 500;
+  const isCorsError = err.message === 'CORS policy blocked this origin';
+  const status = err.status || (isCorsError ? 403 : 500);
 
   if (status >= 500) {
     console.error('[CyberShield] Unhandled error:', err);

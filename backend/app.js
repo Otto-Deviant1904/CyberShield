@@ -8,6 +8,33 @@ const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
 
+function getAllowedOrigins() {
+  const fromList = (process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  const singleOrigin = process.env.FRONTEND_ORIGIN?.trim();
+  if (singleOrigin) fromList.push(singleOrigin);
+
+  return new Set(fromList);
+}
+
+const allowedOrigins = getAllowedOrigins();
+
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.size === 0 || allowedOrigins.has(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error('CORS policy blocked this origin'));
+  },
+  methods: ['GET', 'POST', 'OPTIONS'],
+  credentials: false
+};
+
 const scanLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 30,
@@ -19,7 +46,7 @@ const scanLimiter = rateLimit({
 });
 
 app.use(helmet());
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '100kb' }));
 
 app.get('/health', (req, res) => {

@@ -3,6 +3,13 @@ import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
+const EXAMPLE_URLS = [
+  'https://example.com',
+  'https://myspace.com',
+  'http://neverssl.com',
+  'https://xn--pple-43d.com'
+];
+
 const RISK_THEME = {
   LOW: { className: 'badge-low', ring: '#19d3a2', glow: 'rgba(25, 211, 162, 0.35)' },
   MEDIUM: { className: 'badge-medium', ring: '#f9b74a', glow: 'rgba(249, 183, 74, 0.35)' },
@@ -13,19 +20,26 @@ function RiskRing({ score = 0, level = 'LOW' }) {
   const value = Math.max(0, Math.min(100, Number(score) || 0));
   const theme = RISK_THEME[level] || RISK_THEME.LOW;
 
-  const style = {
-    background: `conic-gradient(${theme.ring} ${value * 3.6}deg, rgba(255,255,255,0.12) 0deg)`,
-    boxShadow: `0 0 35px ${theme.glow}`
-  };
-
   return (
-    <div className="risk-ring" style={style}>
+    <div
+      className="risk-ring"
+      style={{
+        background: `conic-gradient(${theme.ring} ${value * 3.6}deg, rgba(255,255,255,0.12) 0deg)`,
+        boxShadow: `0 0 35px ${theme.glow}`
+      }}
+      aria-label={`Risk score ${value} out of 100`}
+    >
       <div className="risk-ring-inner">
         <span className="risk-score">{value}</span>
         <span className="risk-label">/ 100</span>
       </div>
     </div>
   );
+}
+
+function formatDate(value) {
+  if (!value) return 'N/A';
+  return new Date(value).toLocaleString();
 }
 
 function App() {
@@ -71,8 +85,14 @@ function App() {
 
       <main className="dashboard">
         <header className="hero-card reveal">
-          <p className="eyebrow">CyberShield Scanner</p>
-          <h1>Threat Intelligence Dashboard</h1>
+          <div className="brand-row">
+            <img src="/cybershield-logo.svg" alt="CyberShield logo" className="brand-logo" />
+            <div>
+              <p className="eyebrow">CyberShield Scanner</p>
+              <h1>Threat Intelligence Dashboard</h1>
+            </div>
+          </div>
+
           <p className="subtitle">
             Analyze suspicious URLs with TLS diagnostics, VirusTotal verdicts, and weighted risk modeling.
           </p>
@@ -90,6 +110,14 @@ function App() {
             </button>
           </form>
 
+          <div className="examples-row">
+            {EXAMPLE_URLS.map((sample) => (
+              <button key={sample} type="button" className="example-chip" onClick={() => setUrl(sample)}>
+                {sample}
+              </button>
+            ))}
+          </div>
+
           {error && <div className="error-banner">{error}</div>}
         </header>
 
@@ -98,12 +126,24 @@ function App() {
             <div className="scan-pulse" />
             <div>
               <h2>Running active analysis</h2>
-              <p>Collecting SSL handshake details, redirect chain behavior, domain age, and VirusTotal signals.</p>
+              <p>Collecting SSL handshake details, redirect behavior, domain age, entropy, and VirusTotal intelligence.</p>
             </div>
             <div className="loading-bars">
               <span />
               <span />
               <span />
+            </div>
+          </section>
+        )}
+
+        {!loading && !result && !error && (
+          <section className="card empty-state reveal">
+            <h2>Ready to scan</h2>
+            <p className="muted">Enter a URL or choose an example above to generate a full threat report.</p>
+            <div className="empty-grid">
+              <div><strong>SSL</strong><span>Certificate validation and diagnostics</span></div>
+              <div><strong>VirusTotal</strong><span>Malicious and suspicious engine verdicts</span></div>
+              <div><strong>Heuristics</strong><span>Entropy, punycode, redirects, and TLD signals</span></div>
             </div>
           </section>
         )}
@@ -126,7 +166,7 @@ function App() {
                   <div><span>HTTPS</span><strong>{ssl.https ? 'Yes' : 'No'}</strong></div>
                   <div><span>Certificate Valid</span><strong>{ssl.valid === null ? 'Unknown' : ssl.valid ? 'Yes' : 'No'}</strong></div>
                   <div><span>Issuer</span><strong>{ssl.issuer || 'N/A'}</strong></div>
-                  <div><span>Expires</span><strong>{ssl.expiresAt ? new Date(ssl.expiresAt).toLocaleString() : 'N/A'}</strong></div>
+                  <div><span>Expires</span><strong>{formatDate(ssl.expiresAt)}</strong></div>
                   <div><span>Diagnostic</span><strong>{ssl.error?.type || ssl.warning?.type || 'None'}</strong></div>
                 </div>
               </article>
@@ -166,7 +206,7 @@ function App() {
                   ))}
                 </ul>
               ) : (
-                <p className="muted">No high-risk indicators were triggered.</p>
+                <p className="muted">No major indicators were triggered for this URL.</p>
               )}
             </section>
 
