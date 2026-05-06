@@ -1,8 +1,8 @@
-# CyberShield URL Scanner 🛡️
+# CyberShield URL Scanner 
 
 A professional, full-stack cybersecurity tool for real-time URL threat analysis and risk assessment.
 
-## 🚀 Features
+## Features
 - **Heuristic Analysis:** Checks for SSL/HTTPS, IP-based domains, Punycode (homograph attacks), and subdomain overflow.
 - **Risk Scoring:** Intelligent risk meter categorizing URLs as Safe, Suspicious, or Dangerous.
 - **VirusTotal Integration:** Cross-references URLs against 70+ antivirus engines.
@@ -11,12 +11,12 @@ A professional, full-stack cybersecurity tool for real-time URL threat analysis 
 - **Dark Mode SOC Aesthetic:** Premium cybersecurity-focused design.
 - **Export Reports:** Download scan results as JSON for further investigation.
 
-## 🛠️ Tech Stack
+## Tech Stack
 - **Frontend:** React, Vite, TailwindCSS, Lucide Icons, Framer Motion.
 - **Backend:** Node.js, Express, Axios, Helmet (Security), Express-Rate-Limit.
 - **Analysis:** Shannon Entropy, Custom Regex Heuristics, VT API.
 
-## 📦 Installation & Setup
+## Installation & Setup
 
 ### 1. Clone the repository
 ```bash
@@ -42,10 +42,10 @@ npm run dev
 
 The app will be available at `http://localhost:3000`.
 
-## 🛡️ API Endpoints
+## API Endpoints
 `POST /api/scan`
 - **Body:** `{ "url": "https://example.com" }`
 - **Response:** Detailed JSON report with basic checks and VirusTotal data.
 
-## 📝 License
+## License
 MIT License.
