@@ -4,10 +4,17 @@ function notFoundHandler(req, res) {
   });
 }
 
-function errorHandler(err, req, res, next) {
+function errorHandler(err, req, res, _next) {
+
   const status = err.status || 500;
+
+  if (status >= 500) {
+    console.error('[CyberShield] Unhandled error:', err);
+  }
+
   res.status(status).json({
-    error: err.message || 'Internal server error'
+    error: err.message || 'Internal server error',
+    code: err.code || null
   });
 }
 

@@ -19,6 +19,19 @@ async function scanUrl(rawUrl) {
   ]);
 
   const domainSslResult = domainSsl.status === 'fulfilled' ? domainSsl.value : {};
+  const sslFallback = {
+    https: normalizedUrl.startsWith('https:'),
+    valid: null,
+    issuer: null,
+    expiresAt: null,
+    subject: null,
+    warning: null,
+    error: {
+      type: 'analysis_error',
+      code: null,
+      message: domainSsl.reason?.message || 'SSL analysis unavailable'
+    }
+  };
 
   const result = {
     url: normalizedUrl,
@@ -27,10 +40,7 @@ async function scanUrl(rawUrl) {
       virustotal: threatIntel.status === 'fulfilled' ? threatIntel.value : { status: 'error', message: threatIntel.reason?.message || 'scan failed' }
     },
     heuristics: heuristics.status === 'fulfilled' ? heuristics.value : {},
-    ssl: {
-      ...(domainSslResult.ssl || {}),
-      hasHttps: domainSslResult.hasHttps
-    },
+    ssl: domainSslResult.ssl || sslFallback,
     domain: {
       age: domainSslResult.domainAge || {},
       redirects: domainSslResult.redirects || {}
@@ -39,7 +49,7 @@ async function scanUrl(rawUrl) {
 
   const risk = calculateScore(result);
   result.risk = risk;
-
+  result.indicators = risk.indicators;
   result.reasons = risk.reasons;
 
   return result;

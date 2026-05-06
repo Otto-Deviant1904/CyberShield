@@ -1,137 +1,202 @@
 const axios = require('axios');
 
-const VT_BASE = 'https://www.virustotal.com/api/v3';
-const SUBMIT_DELAY_MS = 16000;
+const VT_BASE_URL = 'https://www.virustotal.com/api/v3';
+const REQUEST_TIMEOUT_MS = 12000;
+const POLL_INTERVAL_MS = 2500;
+const MAX_POLL_ATTEMPTS = 8;
 
-function getApiKey() {
-  return process.env.VIRUSTOTAL_API_KEY || '';
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function submitUrl(url) {
-  const apiKey = getApiKey();
-  if (!apiKey || apiKey === 'your_api_key_here') {
-    return { status: 'skipped', message: 'API key not configured' };
+function getApiKey() {
+  const key = process.env.VIRUSTOTAL_API_KEY;
+  if (!key || key === 'your_api_key_here') return null;
+  return key;
+}
+
+function createClient(apiKey) {
+  return axios.create({
+    baseURL: VT_BASE_URL,
+    timeout: REQUEST_TIMEOUT_MS,
+    headers: {
+      'x-apikey': apiKey
+    }
+  });
+}
+
+function encodeUrlId(url) {
+  return Buffer.from(url)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+}
+
+function buildError(status, message, meta = {}) {
+  return {
+    status,
+    message,
+    ...meta
+  };
+}
+
+function extractStats(attributes = {}) {
+  const stats = attributes.last_analysis_stats || {};
+  return {
+    malicious: stats.malicious || 0,
+    suspicious: stats.suspicious || 0,
+    harmless: stats.harmless || 0,
+    undetected: stats.undetected || 0,
+    reputation: attributes.reputation || 0,
+    lastAnalysisDate: attributes.last_analysis_date
+      ? new Date(attributes.last_analysis_date * 1000).toISOString()
+      : null
+  };
+}
+
+function mapAxiosError(err) {
+  const statusCode = err.response?.status;
+
+  if (statusCode === 429) {
+    return buildError('rate_limited', 'VirusTotal API rate limit reached');
   }
 
+  if (statusCode === 404) {
+    return buildError('not_found', 'VirusTotal report not found yet');
+  }
+
+  if (statusCode >= 500) {
+    return buildError('service_unavailable', 'VirusTotal service is currently unavailable');
+  }
+
+  if (err.code === 'ECONNABORTED') {
+    return buildError('timeout', 'VirusTotal request timed out');
+  }
+
+  return buildError('error', err.message || 'VirusTotal request failed');
+}
+
+async function submitUrl(client, url) {
   try {
-    const response = await axios.post(
-      `${VT_BASE}/urls`,
+    const response = await client.post(
+      '/urls',
       new URLSearchParams({ url }),
       {
         headers: {
-          'x-apikey': apiKey,
           'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        timeout: 10000
+        }
       }
     );
 
     const analysisId = response.data?.data?.id;
     if (!analysisId) {
-      return { status: 'error', message: 'No analysis ID returned' };
+      return buildError('error', 'VirusTotal did not return an analysis ID');
     }
 
-    return { status: 'submitted', analysisId };
-  } catch (err) {
-    if (err.response?.status === 429) {
-      return { status: 'rate_limited', message: 'Rate limit exceeded' };
-    }
-    return { status: 'error', message: err.message };
-  }
-}
-
-async function pollAnalysis(analysisId) {
-  const apiKey = getApiKey();
-  const url = `${VT_BASE}/analyses/${analysisId}`;
-
-  for (let attempt = 0; attempt < 10; attempt++) {
-    try {
-      const response = await axios.get(url, {
-        headers: { 'x-apikey': apiKey },
-        timeout: 10000
-      });
-
-      const status = response.data?.data?.attributes?.status;
-      if (status === 'completed') {
-        return { status: 'completed', data: response.data.data.attributes };
-      }
-    } catch (err) {
-      if (err.response?.status === 429) {
-        await new Promise(r => setTimeout(r, SUBMIT_DELAY_MS));
-        continue;
-      }
-    }
-
-    await new Promise(r => setTimeout(r, 3000));
-  }
-
-  return { status: 'timeout', message: 'Analysis polling timed out' };
-}
-
-function base64UrlEncode(str) {
-  return Buffer.from(str).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-}
-
-async function getUrlReport(url) {
-  const apiKey = getApiKey();
-  if (!apiKey || apiKey === 'your_api_key_here') {
-    return { status: 'skipped', message: 'API key not configured' };
-  }
-
-  const urlId = base64UrlEncode(url);
-  try {
-    const response = await axios.get(`${VT_BASE}/urls/${urlId}`, {
-      headers: { 'x-apikey': apiKey },
-      timeout: 10000
-    });
-
-    const attrs = response.data?.data?.attributes;
-    if (!attrs) return { status: 'not_found', message: 'No report available' };
-
-    const stats = attrs.last_analysis_stats || {};
     return {
-      status: 'success',
-      malicious: stats.malicious || 0,
-      suspicious: stats.suspicious || 0,
-      harmless: stats.harmless || 0,
-      undetected: stats.undetected || 0,
-      reputation: attrs.reputation || 0
+      status: 'submitted',
+      analysisId
     };
   } catch (err) {
-    if (err.response?.status === 404) {
-      return { status: 'not_found', message: 'URL not in VirusTotal database' };
-    }
-    if (err.response?.status === 429) {
-      return { status: 'rate_limited', message: 'Rate limit exceeded' };
-    }
-    return { status: 'error', message: err.message };
+    return mapAxiosError(err);
   }
+}
+
+async function pollAnalysis(client, analysisId) {
+  for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await client.get(`/analyses/${analysisId}`);
+      const attrs = response.data?.data?.attributes || {};
+
+      if (attrs.status === 'completed') {
+        return {
+          status: 'completed',
+          stats: extractStats(attrs)
+        };
+      }
+    } catch (err) {
+      const mapped = mapAxiosError(err);
+      if (mapped.status === 'rate_limited') {
+        await sleep(16000);
+        continue;
+      }
+      if (mapped.status !== 'not_found') {
+        return mapped;
+      }
+    }
+
+    await sleep(POLL_INTERVAL_MS);
+  }
+
+  return buildError('report_unavailable', 'VirusTotal analysis is still queued');
+}
+
+async function fetchUrlReport(client, url) {
+  const urlId = encodeUrlId(url);
+
+  try {
+    const response = await client.get(`/urls/${urlId}`);
+    const attrs = response.data?.data?.attributes;
+
+    if (!attrs) {
+      return buildError('report_unavailable', 'VirusTotal returned an empty URL report');
+    }
+
+    return {
+      status: 'success',
+      ...extractStats(attrs)
+    };
+  } catch (err) {
+    return mapAxiosError(err);
+  }
+}
+
+function mergeResults(primary, fallback) {
+  if (primary.status === 'success') return primary;
+  if (fallback.status === 'success') return fallback;
+
+  if (primary.status === 'report_unavailable' && fallback.status === 'not_found') {
+    return buildError('report_unavailable', 'VirusTotal does not have a completed report for this URL yet');
+  }
+
+  return primary;
 }
 
 async function scanUrl(url) {
-  const submitResult = await submitUrl(url);
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    return buildError('skipped', 'VirusTotal API key not configured');
+  }
 
-  if (submitResult.status === 'submitted') {
-    const pollResult = await pollAnalysis(submitResult.analysisId);
-    if (pollResult.status === 'completed') {
-      const stats = pollResult.data?.last_analysis_stats || {};
-      return {
-        status: 'success',
-        malicious: stats.malicious || 0,
-        suspicious: stats.suspicious || 0,
-        harmless: stats.harmless || 0,
-        undetected: stats.undetected || 0,
-        reputation: pollResult.data?.reputation || 0
-      };
+  const client = createClient(apiKey);
+
+  const submitResult = await submitUrl(client, url);
+  if (submitResult.status !== 'submitted') {
+    if (submitResult.status === 'rate_limited') {
+      const reportFallback = await fetchUrlReport(client, url);
+      return mergeResults(submitResult, reportFallback);
     }
-    return pollResult;
+    return submitResult;
   }
 
-  if (submitResult.status === 'skipped' || submitResult.status === 'rate_limited') {
-    return getUrlReport(url);
+  const pollResult = await pollAnalysis(client, submitResult.analysisId);
+  const reportResult = await fetchUrlReport(client, url);
+
+  if (reportResult.status === 'success') {
+    return reportResult;
   }
 
-  return submitResult;
+  if (pollResult.status === 'completed') {
+    return {
+      status: 'success',
+      ...pollResult.stats
+    };
+  }
+
+  return mergeResults(pollResult, reportResult);
 }
 
-module.exports = { scanUrl, getUrlReport };
+module.exports = {
+  scanUrl
+};
