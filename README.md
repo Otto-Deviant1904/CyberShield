@@ -2,6 +2,12 @@
 
 > Lightweight cybersecurity URL scanner with SSL/TLS diagnostics, VirusTotal intelligence, and weighted risk scoring.
 
+## Build Status
+
+Replace `OWNER` and `REPO` with your GitHub values:
+
+![CI](https://github.com/OWNER/REPO/actions/workflows/ci.yml/badge.svg)
+
 CyberShield is a portfolio-ready full-stack security tool designed for practical URL triage. It combines protocol validation, threat intel, and heuristic indicators into a clear `LOW` / `MEDIUM` / `HIGH` risk assessment.
 
 ## Features
@@ -84,7 +90,7 @@ Each signal contributes a weight to the risk score (0-100), then mapped to:
 ### 1) Clone
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/Otto-Deviant1904/CyberShield
 cd cybershield
 ```
 
