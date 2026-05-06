@@ -6,7 +6,7 @@
 
 Replace `OWNER` and `REPO` with your GitHub values:
 
-![CI](https://github.com/OWNER/REPO/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/Otto-Deviant1904/CyberShield/actions/workflows/ci.yml/badge.svg)
 
 CyberShield is a portfolio-ready full-stack security tool designed for practical URL triage. It combines protocol validation, threat intel, and heuristic indicators into a clear `LOW` / `MEDIUM` / `HIGH` risk assessment.
 
@@ -21,18 +21,34 @@ CyberShield is a portfolio-ready full-stack security tool designed for practical
 
 ## Screenshots
 
-Add screenshots in `docs/screenshots/` and reference them here.
-
-- `docs/screenshots/dashboard-empty.png` - clean landing/empty state
-- `docs/screenshots/dashboard-loading.png` - animated loading state
-- `docs/screenshots/dashboard-result-low.png` - low-risk result example
-- `docs/screenshots/dashboard-result-high.png` - high-risk result example
-
-```md
 ![CyberShield Empty State](docs/screenshots/dashboard-empty.png)
+
+
+## CyberShield Empty State
+
+
+
 ![CyberShield Loading](docs/screenshots/dashboard-loading.png)
-![CyberShield Result](docs/screenshots/dashboard-result-high.png)
-```
+
+
+## CyberShield Loading
+
+
+![CyberShield Low Risk Result](docs/screenshots/dashboard-result-low.png)
+
+
+## CyberShield Low Risk Result
+
+
+![CyberShield High Risk Result](docs/screenshots/dashboard-result-high.png)
+
+
+## CyberShield High Risk Result
+
+
+
+
+
 
 ## Architecture Overview
 
