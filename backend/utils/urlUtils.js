@@ -60,6 +60,7 @@ function isPrivateOrLocalHost(hostname) {
 }
 
 function getSubdomainCount(hostname) {
+  if (isIpHost(hostname)) return 0;
   const parts = hostname.split('.');
   return parts.length > 2 ? parts.length - 2 : 0;
 }
