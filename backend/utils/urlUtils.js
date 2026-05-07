@@ -18,6 +18,43 @@ function isIpHost(hostname) {
   return /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname);
 }
 
+function isPrivateOrLocalIpv4(hostname) {
+  if (!isIpHost(hostname)) return false;
+
+  const octets = hostname.split('.').map(Number);
+  const [a, b] = octets;
+
+  return (
+    a === 10 ||
+    a === 127 ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168)
+  );
+}
+
+function isPrivateOrLocalIpv6(hostname) {
+  const lower = hostname.toLowerCase();
+  return (
+    lower === '::1' ||
+    lower.startsWith('fc') ||
+    lower.startsWith('fd') ||
+    lower.startsWith('fe80:')
+  );
+}
+
+function isPrivateOrLocalHost(hostname) {
+  if (!hostname) return false;
+  const lower = hostname.toLowerCase();
+
+  return (
+    lower === 'localhost' ||
+    lower.endsWith('.localhost') ||
+    isPrivateOrLocalIpv4(lower) ||
+    isPrivateOrLocalIpv6(lower)
+  );
+}
+
 function getSubdomainCount(hostname) {
   const parts = hostname.split('.');
   return parts.length > 2 ? parts.length - 2 : 0;
@@ -54,6 +91,7 @@ module.exports = {
   normalizeUrl,
   getHostname,
   isIpHost,
+  isPrivateOrLocalHost,
   getSubdomainCount,
   getEntropy,
   isPunycode,

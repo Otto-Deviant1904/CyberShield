@@ -3,7 +3,7 @@ const http = require('http');
 const tls = require('tls');
 const axios = require('axios');
 
-const { getHostname, isIpHost } = require('../utils/urlUtils');
+const { getHostname, isIpHost, isPrivateOrLocalHost } = require('../utils/urlUtils');
 
 const REDIRECT_TIMEOUT_MS = 8000;
 const SSL_TIMEOUT_MS = 10000;
@@ -94,6 +94,15 @@ async function getRedirectChain(url) {
   let error = null;
 
   while (count < maxRedirects) {
+    const currentHost = getHostname(current);
+    if (isPrivateOrLocalHost(currentHost)) {
+      error = {
+        type: 'blocked_target',
+        message: 'Redirect target resolves to private or local network host'
+      };
+      break;
+    }
+
     const result = await new Promise((resolve) => {
       const lib = current.startsWith('https') ? https : http;
       const req = lib.request(current, { method: 'HEAD', timeout: REDIRECT_TIMEOUT_MS }, (res) => {
@@ -133,6 +142,17 @@ async function getRedirectChain(url) {
 
     const next = result.location;
     current = next.startsWith('http') ? next : new URL(next, current).toString();
+
+    const nextHost = getHostname(current);
+    if (isPrivateOrLocalHost(nextHost)) {
+      chain.push(current);
+      error = {
+        type: 'blocked_target',
+        message: 'Redirect target resolves to private or local network host'
+      };
+      break;
+    }
+
     count++;
   }
 

@@ -1,4 +1,4 @@
-const { normalizeUrl } = require('../utils/urlUtils');
+const { normalizeUrl, getHostname, isPrivateOrLocalHost } = require('../utils/urlUtils');
 const { scanUrl: vtScan } = require('./virusTotalService');
 const { analyze: heuristicAnalyze } = require('./heuristicService');
 const { analyze: domainSslAnalyze } = require('./domainSslService');
@@ -8,6 +8,13 @@ async function scanUrl(rawUrl) {
   const normalizedUrl = normalizeUrl(rawUrl);
   if (!normalizedUrl) {
     const error = new Error('Invalid URL provided');
+    error.status = 400;
+    throw error;
+  }
+
+  const hostname = getHostname(normalizedUrl);
+  if (isPrivateOrLocalHost(hostname)) {
+    const error = new Error('Private and local network targets are not allowed');
     error.status = 400;
     throw error;
   }
