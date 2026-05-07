@@ -83,6 +83,7 @@ function isPunycode(hostname) {
 }
 
 function getTld(hostname) {
+  if (isIpHost(hostname)) return '';
   const parts = hostname.split('.');
   return parts.length >= 2 ? parts[parts.length - 1].toLowerCase() : '';
 }
