@@ -15,7 +15,11 @@ function getHostname(urlStr) {
 }
 
 function isIpHost(hostname) {
-  return /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname);
+  if (!/^(\d{1,3}\.){3}\d{1,3}$/.test(hostname)) return false;
+  return hostname
+    .split('.')
+    .map(Number)
+    .every((octet) => Number.isInteger(octet) && octet >= 0 && octet <= 255);
 }
 
 function isPrivateOrLocalIpv4(hostname) {
