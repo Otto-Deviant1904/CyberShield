@@ -4,7 +4,6 @@
 
 ## Build Status
 
-Replace `OWNER` and `REPO` with your GitHub values:
 
 ![CI](https://github.com/Otto-Deviant1904/CyberShield/actions/workflows/ci.yml/badge.svg)
 
